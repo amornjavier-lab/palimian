@@ -1,21 +1,25 @@
 export const dynamic = 'force-dynamic';
-import pool from '../lib/db';
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export default async function Home() {
-  // 1. ดึงข้อมูล Hero Section จากตาราง settings
-  const [settingsRows] = await pool.query('SELECT * FROM settings');
+  // ดึง Cloudflare Context เพื่อเข้าถึง D1 Database Binding
+  const { env } = await getCloudflareContext();
+
+  // 1. ดึงข้อมูล Hero Section จากตาราง settings ใน D1
+  const settingsRows = await env.palimian.prepare('SELECT * FROM settings').all();
   const settings = {};
-  settingsRows.forEach(row => {
+  settingsRows.results.forEach(row => {
     settings[row.key_name] = row.value_text;
   });
 
-  // 2. ดึงข้อมูลหมวดหมู่หลักจากตาราง pages
-  const [mainPages] = await pool.query('SELECT * FROM pages WHERE parent_id IS NULL');
+  // 2. ดึงข้อมูลหมวดหมู่หลักจากตาราง pages ใน D1
+  const mainPagesResult = await env.palimian.prepare('SELECT * FROM pages WHERE parent_id IS NULL').all();
+  const mainPages = mainPagesResult.results;
 
   return (
     <div style={{ backgroundColor: '#FAF9F6', color: '#1A1A1A', minHeight: '100vh', fontFamily: 'serif', padding: '0 2rem 4rem' }}>
       
-      {/* Hero Section (ดึงข้อมูลจาก DB) */}
+      {/* Hero Section (ดึงข้อมูลจาก D1) */}
       <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '4rem 0 6rem', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '4rem', alignItems: 'center' }}>
         <div>
           <span style={{ fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#666', display: 'block', marginBottom: '1rem' }}>
@@ -25,7 +29,6 @@ export default async function Home() {
             {settings.hero_title || 'Loading...'}
           </h1>
           
-          {/* ใช้ dangerouslySetInnerHTML และ whiteSpace: 'pre-line' เพื่อรองรับการเว้นบรรทัด */}
           <p 
             style={{ 
               fontSize: '1rem', 
@@ -39,7 +42,7 @@ export default async function Home() {
           />
         </div>
 
-        {/* Hero Image Section (ดึงรูปจาก settings.hero_image มาแสดงผล) */}
+        {/* Hero Image Section */}
         <div style={{ backgroundColor: '#EFECE6', height: '400px', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
           {settings.hero_image ? (
             <img 
@@ -55,7 +58,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Categories / Dynamic Links from Database */}
+      {/* Categories / Dynamic Links from D1 */}
       <section style={{ maxWidth: '1200px', margin: '0 auto', borderTop: '1px solid #E0DCD0', paddingTop: '4rem' }}>
         <h2 style={{ fontSize: '2rem', fontWeight: 'normal', marginBottom: '1rem', fontFamily: 'serif' }}>
           Explore Categories

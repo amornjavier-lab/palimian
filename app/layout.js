@@ -7,15 +7,16 @@ export default function RootLayout({ children }) {
   const [isOpen, setIsOpen] = useState(false);
   const [pages, setPages] = useState([]);
 
-  // ดึงข้อมูลหน้าเว็บจาก API หรือสามารถปรับเปลี่ยนตามการเชื่อมต่อของคุณ
   useEffect(() => {
     async function fetchPages() {
       try {
-        const res = await fetch('/api/pages'); // หรือปรับเป็นวิธีดึงข้อมูลที่คุณสะดวก
+        const res = await fetch('/api/pages', { cache: 'no-store' });
         const data = await res.json();
-        setPages(data);
+        if (Array.isArray(data)) {
+          setPages(data);
+        }
       } catch (error) {
-        // กรณีดึงผ่าน API ไม่ได้ ให้กำหนดค่าเริ่มต้นหรือข้ามไป
+        setPages([]);
       }
     }
     fetchPages();
@@ -73,7 +74,7 @@ export default function RootLayout({ children }) {
                   right: 0, 
                   top: '120%', 
                   backgroundColor: '#FFFFFF', 
-                  minWidth: '180px', 
+                  minWidth: '200px', 
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
                   borderRadius: '4px', 
                   border: '1px solid #EBE7DF',
@@ -88,20 +89,25 @@ export default function RootLayout({ children }) {
                 >
                   หน้าแรก
                 </Link>
-                <Link 
-                  href="/jewelry" 
-                  onClick={() => setIsOpen(false)}
-                  style={{ display: 'block', padding: '0.75rem 1rem', color: '#1A1A1A', textDecoration: 'none', fontSize: '0.9rem', borderBottom: '1px solid #f0f0f0' }}
-                >
-                  Support My Jewelry
-                </Link>
-                <Link 
-                  href="/Signs" 
-                  onClick={() => setIsOpen(false)}
-                  style={{ display: 'block', padding: '0.75rem 1rem', color: '#1A1A1A', textDecoration: 'none', fontSize: '0.9rem' }}
-                >
-                  Graphics for Signs
-                </Link>
+
+                {/* วนลูปข้อมูลหน้าเว็บทั้งหมดจาก D1 Database */}
+                {pages.map((page, index) => (
+                  <Link 
+                    key={page.id || page.slug_path} 
+                    href={`/${page.slug_path}`} 
+                    onClick={() => setIsOpen(false)}
+                    style={{ 
+                      display: 'block', 
+                      padding: '0.75rem 1rem', 
+                      color: '#1A1A1A', 
+                      textDecoration: 'none', 
+                      fontSize: '0.9rem',
+                      borderBottom: index < pages.length - 1 ? '1px solid #f0f0f0' : 'none' 
+                    }}
+                  >
+                    {page.title}
+                  </Link>
+                ))}
               </div>
             )}
           </div>
@@ -127,5 +133,5 @@ export default function RootLayout({ children }) {
         </footer>
       </body>
     </html>
-  )
+  );
 }

@@ -1,25 +1,18 @@
+export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import pool from '../../lib/db';
-
-export async function generateMetadata({ params }) {
-  const { slug } = await params;
-  const slugPath = slug.join('/');
-  const [rows] = await pool.query('SELECT * FROM pages WHERE slug_path = ?', [slugPath]);
-  
-  if (rows.length === 0) return { title: 'Not Found' };
-  return {
-    title: rows[0].title,
-    description: rows[0].description,
-  };
-}
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export default async function Page({ params }) {
   const { slug } = await params;
   const slugPath = slug.join('/');
 
-  // 1. ดึงข้อมูลของหน้าปัจจุบัน
-  const [rows] = await pool.query('SELECT * FROM pages WHERE slug_path = ?', [slugPath]);
+  const { env } = await getCloudflareContext();
+
+  // 1. ดึงข้อมูลของหน้าปัจจุบันจาก D1
+  const pageResult = await env.palimian.prepare('SELECT * FROM pages WHERE slug_path = ?').bind(slugPath).all();
+  const rows = pageResult.results;
+  
   if (rows.length === 0) {
     notFound();
   }
@@ -31,17 +24,20 @@ export default async function Page({ params }) {
   let accumulatedPath = '';
   for (const part of pathSegments) {
     accumulatedPath = accumulatedPath ? `${accumulatedPath}/${part}` : part;
-    const [matchRows] = await pool.query('SELECT title, slug_path FROM pages WHERE slug_path = ?', [accumulatedPath]);
+    const matchResult = await env.palimian.prepare('SELECT title, slug_path FROM pages WHERE slug_path = ?').bind(accumulatedPath).all();
+    const matchRows = matchResult.results;
     if (matchRows.length > 0) {
       breadcrumbs.push({ title: matchRows[0].title, path: `/${matchRows[0].slug_path}` });
     }
   }
 
   // 3. ดึงรูปภาพทั้งหมดจากตาราง page_images ที่ผูกกับหน้านี้
-  const [images] = await pool.query('SELECT * FROM page_images WHERE page_id = ?', [currentPage.id]);
+  const imagesResult = await env.palimian.prepare('SELECT * FROM page_images WHERE page_id = ?').bind(currentPage.id).all();
+  const images = imagesResult.results;
 
   // 4. ดึงหน้าย่อย (Subpages) ภายใต้หน้านี้
-  const [subPages] = await pool.query('SELECT * FROM pages WHERE parent_id = ?', [currentPage.id]);
+  const subPagesResult = await env.palimian.prepare('SELECT * FROM pages WHERE parent_id = ?').bind(currentPage.id).all();
+  const subPages = subPagesResult.results;
 
   return (
     <div style={{ backgroundColor: '#FAF9F6', color: '#1A1A1A', minHeight: '100vh', fontFamily: 'serif', padding: '0 2rem 4rem' }}>
@@ -83,7 +79,6 @@ export default async function Page({ params }) {
             }}>
               {images.map((img) => (
                 <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                  {/* กรอบรูปภาพ */}
                   <div style={{ width: '100%', height: '280px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#EFECE6' }}>
                     <img 
                       src={img.image_url} 
@@ -91,7 +86,6 @@ export default async function Page({ params }) {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                     />
                   </div>
-                  {/* ชื่อสินค้าใต้รูปภาพ */}
                   <span style={{ marginTop: '0.75rem', fontSize: '1.05rem', fontFamily: 'sans-serif', color: '#1A1A1A', fontWeight: '500' }}>
                     {img.title}
                   </span>
