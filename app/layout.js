@@ -22,6 +22,16 @@ export default function RootLayout({ children }) {
     fetchPages();
   }, []);
 
+  // จัดกลุ่มหน้าเว็บให้เป็นลำดับชั้น: หัวข้อใหญ่ (parent_id เป็น null) และหัวข้อย่อย (มี parent_id)
+  const parentPages = pages.filter((page) => !page.parent_id);
+  const childPagesByParent = pages.reduce((acc, page) => {
+    if (page.parent_id) {
+      if (!acc[page.parent_id]) acc[page.parent_id] = [];
+      acc[page.parent_id].push(page);
+    }
+    return acc;
+  }, {});
+
   return (
     <html lang="th">
       <body style={{ margin: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
@@ -74,7 +84,7 @@ export default function RootLayout({ children }) {
                   right: 0, 
                   top: '120%', 
                   backgroundColor: '#FFFFFF', 
-                  minWidth: '200px', 
+                  minWidth: '220px', 
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
                   borderRadius: '4px', 
                   border: '1px solid #EBE7DF',
@@ -90,24 +100,51 @@ export default function RootLayout({ children }) {
                   หน้าแรก
                 </Link>
 
-                {/* วนลูปข้อมูลหน้าเว็บทั้งหมดจาก D1 Database */}
-                {pages.map((page, index) => (
-                  <Link 
-                    key={page.id || page.slug_path} 
-                    href={`/${page.slug_path}`} 
-                    onClick={() => setIsOpen(false)}
-                    style={{ 
-                      display: 'block', 
-                      padding: '0.75rem 1rem', 
-                      color: '#1A1A1A', 
-                      textDecoration: 'none', 
-                      fontSize: '0.9rem',
-                      borderBottom: index < pages.length - 1 ? '1px solid #f0f0f0' : 'none' 
-                    }}
-                  >
-                    {page.title}
-                  </Link>
-                ))}
+                {/* วนลูปเฉพาะหัวข้อใหญ่ (parent_id เป็น null) แล้วแทรกหัวข้อย่อยของแต่ละอันต่อท้าย */}
+                {parentPages.map((page, index) => {
+                  const children = childPagesByParent[page.id] || [];
+                  const isLastGroup = index === parentPages.length - 1;
+
+                  return (
+                    <div key={page.id || page.slug_path}>
+                      <Link 
+                        href={`/${page.slug_path}`} 
+                        onClick={() => setIsOpen(false)}
+                        style={{ 
+                          display: 'block', 
+                          padding: '0.75rem 1rem', 
+                          color: '#1A1A1A', 
+                          textDecoration: 'none', 
+                          fontSize: '0.9rem',
+                          fontWeight: children.length > 0 ? 'bold' : 'normal',
+                          borderBottom: (children.length === 0 && isLastGroup) ? 'none' : '1px solid #f0f0f0'
+                        }}
+                      >
+                        {page.title}
+                      </Link>
+
+                      {/* หัวข้อย่อย: เยื้องเข้าไปด้านใน (indent) และตัวอักษรเล็กลงเล็กน้อย */}
+                      {children.map((child, childIndex) => (
+                        <Link
+                          key={child.id || child.slug_path}
+                          href={`/${child.slug_path}`}
+                          onClick={() => setIsOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '0.6rem 1rem 0.6rem 2rem',
+                            color: '#555',
+                            textDecoration: 'none',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#FAF9F6',
+                            borderBottom: (childIndex === children.length - 1 && isLastGroup) ? 'none' : '1px solid #f0f0f0'
+                          }}
+                        >
+                          {child.title}
+                        </Link>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
