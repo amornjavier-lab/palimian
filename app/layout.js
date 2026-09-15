@@ -116,7 +116,7 @@ export default function RootLayout({ children }) {
                           color: '#1A1A1A', 
                           textDecoration: 'none', 
                           fontSize: '0.9rem',
-                          fontWeight: children.length > 0 ? 'bold' : 'normal',
+                          fontWeight: 'normal',
                           borderBottom: (children.length === 0 && isLastGroup) ? 'none' : '1px solid #f0f0f0'
                         }}
                       >
