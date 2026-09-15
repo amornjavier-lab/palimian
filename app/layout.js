@@ -134,8 +134,8 @@ export default function RootLayout({ children }) {
                             padding: '0.6rem 1rem 0.6rem 2rem',
                             color: '#555',
                             textDecoration: 'none',
-                            fontSize: '0.85rem',
-                            backgroundColor: '#FAF9F6',
+                            fontSize: '0.9rem',
+                            backgroundColor: '#FFFFFF',
                             borderBottom: (childIndex === children.length - 1 && isLastGroup) ? 'none' : '1px solid #f0f0f0'
                           }}
                         >
