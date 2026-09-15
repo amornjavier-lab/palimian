@@ -132,7 +132,7 @@ export default function RootLayout({ children }) {
                           style={{
                             display: 'block',
                             padding: '0.6rem 1rem 0.6rem 2rem',
-                            color: '#555',
+                            color: '#1A1A1A',
                             textDecoration: 'none',
                             fontSize: '0.9rem',
                             backgroundColor: '#FFFFFF',
