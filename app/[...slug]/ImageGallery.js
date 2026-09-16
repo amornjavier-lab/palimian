@@ -1,172 +1,40 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-
-// การ์ดรูปภาพ 1 ใบ (ใช้ทั้งแถวนักกราฟิกและแถว general gallery)
-function ImageCard({ img, height, altFallback, onClick }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        flex: '0 0 calc((100% - 4rem) / 3)', // โชว์ทีละ 3 ใบพอดีแถว ที่เหลือเลื่อนดู
-        minWidth: '220px'
-      }}
-    >
-      <div
-        onClick={onClick}
-        style={{
-          width: '100%',
-          height,
-          borderRadius: '4px',
-          overflow: 'hidden',
-          backgroundColor: '#EFECE6',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer'
-        }}
-      >
-        <img
-          src={img.image_url}
-          alt={img.title || altFallback}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          draggable={false}
-        />
-      </div>
-      <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
-        {img.title}
-      </span>
-    </div>
-  );
-}
-
-// แถวที่เลื่อนดูรูปในแนวนอนได้ พร้อมปุ่มลูกศรซ้าย-ขวา (โผล่มาเฉพาะตอนมีรูปเกิน 3 ใบ)
-function ScrollRow({ items, height, altFallback, onImageClick, gap }) {
-  const scrollRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollState = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    updateScrollState();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateScrollState);
-    window.addEventListener('resize', updateScrollState);
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
-    };
-  }, [items]);
-
-  const scrollByAmount = (direction) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const cardWidth = el.clientWidth / 3;
-    el.scrollBy({ left: direction * cardWidth * 1.05, behavior: 'smooth' });
-  };
-
-  return (
-    <div style={{ position: 'relative' }}>
-      {canScrollLeft && (
-        <button
-          onClick={() => scrollByAmount(-1)}
-          aria-label="เลื่อนดูรูปก่อนหน้า"
-          style={arrowButtonStyle('left')}
-        >
-          &#8249;
-        </button>
-      )}
-
-      <div
-        ref={scrollRef}
-        style={{
-          display: 'flex',
-          gap,
-          overflowX: 'auto',
-          scrollSnapType: 'x proximity',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch'
-        }}
-        className="hide-scrollbar"
-      >
-        {items.map((img) => (
-          <div key={img.id} style={{ scrollSnapAlign: 'start' }}>
-            <ImageCard
-              img={img}
-              height={height}
-              altFallback={altFallback}
-              onClick={() => onImageClick(img)}
-            />
-          </div>
-        ))}
-      </div>
-
-      {canScrollRight && (
-        <button
-          onClick={() => scrollByAmount(1)}
-          aria-label="เลื่อนดูรูปถัดไป"
-          style={arrowButtonStyle('right')}
-        >
-          &#8250;
-        </button>
-      )}
-
-      {/* ซ่อน scrollbar เริ่มต้นของเบราว์เซอร์ (webkit) แต่ยังเลื่อนด้วยนิ้ว/เมาส์ได้ */}
-      <style jsx>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function arrowButtonStyle(side) {
-  return {
-    position: 'absolute',
-    top: '50%',
-    [side]: '-1.1rem',
-    transform: 'translateY(-50%)',
-    width: '2.5rem',
-    height: '2.5rem',
-    borderRadius: '50%',
-    border: '1px solid #E0DCD0',
-    backgroundColor: '#FFFFFF',
-    color: '#1A1A1A',
-    fontSize: '1.4rem',
-    lineHeight: 1,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-    zIndex: 10
-  };
-}
+import { useState, useEffect } from 'react';
 
 export default function ImageGallery({ designerGroups, generalImages }) {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(null);
 
-  // ปิด lightbox ด้วยปุ่ม Esc
+  // รวมรูปทั้งหมด (ทั้งจากกลุ่มนักกราฟิกและ gallery ทั่วไป) เป็นลิสต์เดียว เรียงตามลำดับที่แสดงบนหน้าจอ
+  // เพื่อให้กดปุ่มเลื่อนแล้ววิ่งต่อเนื่องไปเรื่อยๆ ได้ทั้งหน้า (รวมถึงรูปที่ 4 เป็นต้นไป)
+  const allImages = [
+    ...designerGroups.flatMap((group) => group.items),
+    ...generalImages
+  ];
+
+  const selectedImage = selectedIndex !== null ? allImages[selectedIndex] : null;
+
+  const showPrev = () => {
+    setSelectedIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
+  const showNext = () => {
+    setSelectedIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
+
+  // ปิด lightbox ด้วยปุ่ม Esc และเลื่อนรูปด้วยปุ่มลูกศรซ้าย-ขวาบนคีย์บอร์ด
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === 'Escape') setSelectedImage(null);
+      if (e.key === 'Escape') setSelectedIndex(null);
+      if (e.key === 'ArrowLeft') showPrev();
+      if (e.key === 'ArrowRight') showNext();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [selectedIndex, allImages.length]);
 
   return (
     <>
-      {/* Designer Rows: 1 แถว = นักกราฟิก 1 คน เลื่อนดูได้ถ้ามีรูปเกิน 3 */}
+      {/* Designer Rows: 1 แถว = นักกราฟิก 1 คน, 3 คอลัมน์ */}
       {designerGroups.length > 0 && (
         <section style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           {designerGroups.map((group) => (
@@ -174,35 +42,87 @@ export default function ImageGallery({ designerGroups, generalImages }) {
               <h3 style={{ fontSize: '1.4rem', fontWeight: 'normal', marginBottom: '1.25rem', fontFamily: 'serif', borderBottom: '1px solid #E0DCD0', paddingBottom: '0.5rem' }}>
                 {group.designer_name}
               </h3>
-              <ScrollRow
-                items={group.items}
-                height="220px"
-                altFallback={group.designer_name}
-                onImageClick={setSelectedImage}
-                gap="2rem"
-              />
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '2rem'
+              }}>
+                {group.items.map((img) => (
+                  <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div
+                      onClick={() => setSelectedIndex(allImages.findIndex((i) => i.id === img.id))}
+                      style={{
+                        width: '100%',
+                        height: '220px',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        backgroundColor: '#EFECE6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <img
+                        src={img.image_url}
+                        alt={img.title || group.designer_name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
+                      {img.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </section>
       )}
 
-      {/* Product Gallery เดิม: สำหรับรูปที่ไม่มี designer_name เลื่อนดูได้ถ้ามีรูปเกิน 3 */}
+      {/* Product Gallery Grid เดิม: สำหรับรูปที่ไม่มี designer_name */}
       {generalImages.length > 0 && (
         <section style={{ marginBottom: '4rem' }}>
-          <ScrollRow
-            items={generalImages}
-            height="280px"
-            altFallback=""
-            onImageClick={setSelectedImage}
-            gap="2rem"
-          />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '2.5rem 2rem'
+          }}>
+            {generalImages.map((img) => (
+              <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                <div
+                  onClick={() => setSelectedIndex(allImages.findIndex((i) => i.id === img.id))}
+                  style={{
+                    width: '100%',
+                    height: '280px',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    backgroundColor: '#EFECE6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <img
+                    src={img.image_url}
+                    alt={img.title || ''}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+                <span style={{ marginTop: '0.75rem', fontSize: '1.05rem', fontFamily: 'sans-serif', color: '#1A1A1A', fontWeight: '500' }}>
+                  {img.title}
+                </span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
       {/* Lightbox: แสดงรูปเต็มเมื่อคลิก */}
       {selectedImage && (
         <div
-          onClick={() => setSelectedImage(null)}
+          onClick={() => setSelectedIndex(null)}
           style={{
             position: 'fixed',
             top: 0,
@@ -221,7 +141,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
           }}
         >
           <button
-            onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
+            onClick={(e) => { e.stopPropagation(); setSelectedIndex(null); }}
             aria-label="ปิด"
             style={{
               position: 'absolute',
@@ -237,6 +157,63 @@ export default function ImageGallery({ designerGroups, generalImages }) {
           >
             &times;
           </button>
+
+          {/* ปุ่มเลื่อนไปรูปก่อนหน้า */}
+          {allImages.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); showPrev(); }}
+              aria-label="รูปก่อนหน้า"
+              style={{
+                position: 'absolute',
+                left: '1rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#FFF',
+                fontSize: '1.8rem',
+                lineHeight: 1,
+                width: '3rem',
+                height: '3rem',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              &#8249;
+            </button>
+          )}
+
+          {/* ปุ่มเลื่อนไปรูปถัดไป (ดูรูปที่ 4 เป็นต้นไปได้จากปุ่มนี้) */}
+          {allImages.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); showNext(); }}
+              aria-label="รูปถัดไป"
+              style={{
+                position: 'absolute',
+                right: '1rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#FFF',
+                fontSize: '1.8rem',
+                lineHeight: 1,
+                width: '3rem',
+                height: '3rem',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              &#8250;
+            </button>
+          )}
+
           <img
             src={selectedImage.image_url}
             alt={selectedImage.title || ''}
@@ -258,6 +235,16 @@ export default function ImageGallery({ designerGroups, generalImages }) {
               {selectedImage.title}
             </span>
           )}
+
+          {/* ตัวนับลำดับรูป เช่น 4 / 9 */}
+          <span style={{
+            marginTop: '0.5rem',
+            color: '#CCC',
+            fontFamily: 'sans-serif',
+            fontSize: '0.85rem'
+          }}>
+            {selectedIndex + 1} / {allImages.length}
+          </span>
         </div>
       )}
     </>
