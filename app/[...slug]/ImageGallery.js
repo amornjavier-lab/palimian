@@ -48,7 +48,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
                       <img
                         src={img.image_url}
                         alt={img.title || group.designer_name}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     </div>
                     <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
@@ -89,7 +89,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
                   <img
                     src={img.image_url}
                     alt={img.title || ''}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>
                 <span style={{ marginTop: '0.75rem', fontSize: '1.05rem', fontFamily: 'sans-serif', color: '#1A1A1A', fontWeight: '500' }}>
