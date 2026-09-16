@@ -100,11 +100,20 @@ export default async function Page({ params }) {
                 }}>
                   {group.items.map((img) => (
                     <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ width: '100%', height: '220px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#EFECE6' }}>
+                      <div style={{
+                        width: '100%',
+                        height: '220px',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        backgroundColor: '#EFECE6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
                         <img
                           src={img.image_url}
                           alt={img.title || group.designer_name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                         />
                       </div>
                       <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
@@ -128,11 +137,20 @@ export default async function Page({ params }) {
             }}>
               {generalImages.map((img) => (
                 <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ width: '100%', height: '280px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#EFECE6' }}>
+                  <div style={{
+                    width: '100%',
+                    height: '280px',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    backgroundColor: '#EFECE6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
                     <img
                       src={img.image_url}
                       alt={img.title || currentPage.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     />
                   </div>
                   <span style={{ marginTop: '0.75rem', fontSize: '1.05rem', fontFamily: 'sans-serif', color: '#1A1A1A', fontWeight: '500' }}>
