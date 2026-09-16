@@ -2,11 +2,113 @@
 
 import { useState, useEffect } from 'react';
 
+// ปุ่มลูกศรเล็กๆ สำหรับเลื่อนกริดไปดูรูปถัดไป/ก่อนหน้า
+function ArrowButton({ direction, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={direction === 'prev' ? 'รูปก่อนหน้า' : 'รูปถัดไป'}
+      style={{
+        backgroundColor: '#1A1A1A',
+        color: '#FFF',
+        border: 'none',
+        width: '2rem',
+        height: '2rem',
+        borderRadius: '50%',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '1.1rem',
+        lineHeight: 1
+      }}
+    >
+      {direction === 'prev' ? '\u2039' : '\u203A'}
+    </button>
+  );
+}
+
+// แถวรูปของนักกราฟิกคนหนึ่ง (หรือ gallery ทั่วไป) แสดงทีละ 3 รูป
+// ถ้ามีมากกว่า 3 รูป จะมีปุ่มลูกศรเลื่อนดูรูปที่ 4 เป็นต้นไป
+function ImageRow({ heading, items, imageHeight, onImageClick }) {
+  const [startIndex, setStartIndex] = useState(0);
+  const windowSize = 3;
+  const canSlide = items.length > windowSize;
+  const visibleItems = items.slice(startIndex, startIndex + windowSize);
+
+  const showPrev = () => {
+    setStartIndex((prev) => Math.max(0, prev - 1));
+  };
+  const showNext = () => {
+    setStartIndex((prev) => Math.min(items.length - windowSize, prev + 1));
+  };
+
+  return (
+    <div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid #E0DCD0',
+        paddingBottom: '0.5rem',
+        marginBottom: '1.25rem'
+      }}>
+        {heading ? (
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 'normal', margin: 0, fontFamily: 'serif' }}>
+            {heading}
+          </h3>
+        ) : <span />}
+
+        {canSlide && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ArrowButton direction="prev" onClick={showPrev} />
+            <ArrowButton direction="next" onClick={showNext} />
+          </div>
+        )}
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '2rem'
+      }}>
+        {visibleItems.map((img) => (
+          <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <div
+              onClick={() => onImageClick(img)}
+              style={{
+                width: '100%',
+                height: imageHeight,
+                borderRadius: '4px',
+                overflow: 'hidden',
+                backgroundColor: '#EFECE6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <img
+                src={img.image_url}
+                alt={img.title || heading || ''}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
+              {img.title}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ImageGallery({ designerGroups, generalImages }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
   // รวมรูปทั้งหมด (ทั้งจากกลุ่มนักกราฟิกและ gallery ทั่วไป) เป็นลิสต์เดียว เรียงตามลำดับที่แสดงบนหน้าจอ
-  // เพื่อให้กดปุ่มเลื่อนแล้ววิ่งต่อเนื่องไปเรื่อยๆ ได้ทั้งหน้า (รวมถึงรูปที่ 4 เป็นต้นไป)
+  // ใช้สำหรับเลื่อนดูรูปต่อเนื่องใน lightbox (ครอบคลุมรูปที่ 4 เป็นต้นไปด้วย แม้จะไม่ได้อยู่ในกริดที่มองเห็น ณ ขณะนั้น)
   const allImages = [
     ...designerGroups.flatMap((group) => group.items),
     ...generalImages
@@ -14,19 +116,23 @@ export default function ImageGallery({ designerGroups, generalImages }) {
 
   const selectedImage = selectedIndex !== null ? allImages[selectedIndex] : null;
 
-  const showPrev = () => {
+  const showPrevImage = () => {
     setSelectedIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
   };
-  const showNext = () => {
+  const showNextImage = () => {
     setSelectedIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
+
+  const openLightbox = (img) => {
+    setSelectedIndex(allImages.findIndex((i) => i.id === img.id));
   };
 
   // ปิด lightbox ด้วยปุ่ม Esc และเลื่อนรูปด้วยปุ่มลูกศรซ้าย-ขวาบนคีย์บอร์ด
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Escape') setSelectedIndex(null);
-      if (e.key === 'ArrowLeft') showPrev();
-      if (e.key === 'ArrowRight') showNext();
+      if (e.key === 'ArrowLeft') showPrevImage();
+      if (e.key === 'ArrowRight') showNextImage();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -34,92 +140,34 @@ export default function ImageGallery({ designerGroups, generalImages }) {
 
   return (
     <>
-      {/* Designer Rows: 1 แถว = นักกราฟิก 1 คน, 3 คอลัมน์ */}
+      {/* Designer Rows: 1 แถว = นักกราฟิก 1 คน แสดงทีละ 3 รูป เลื่อนดูรูปที่ 4 ขึ้นไปด้วยปุ่มลูกศร */}
       {designerGroups.length > 0 && (
         <section style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           {designerGroups.map((group) => (
-            <div key={group.designer_name}>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 'normal', marginBottom: '1.25rem', fontFamily: 'serif', borderBottom: '1px solid #E0DCD0', paddingBottom: '0.5rem' }}>
-                {group.designer_name}
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '2rem'
-              }}>
-                {group.items.map((img) => (
-                  <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div
-                      onClick={() => setSelectedIndex(allImages.findIndex((i) => i.id === img.id))}
-                      style={{
-                        width: '100%',
-                        height: '220px',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                        backgroundColor: '#EFECE6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <img
-                        src={img.image_url}
-                        alt={img.title || group.designer_name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    </div>
-                    <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
-                      {img.title}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ImageRow
+              key={group.designer_name}
+              heading={group.designer_name}
+              items={group.items}
+              imageHeight="220px"
+              onImageClick={openLightbox}
+            />
           ))}
         </section>
       )}
 
-      {/* Product Gallery Grid เดิม: สำหรับรูปที่ไม่มี designer_name */}
+      {/* Product Gallery Grid เดิม: สำหรับรูปที่ไม่มี designer_name แสดงทีละ 3 รูปเช่นกัน */}
       {generalImages.length > 0 && (
         <section style={{ marginBottom: '4rem' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '2.5rem 2rem'
-          }}>
-            {generalImages.map((img) => (
-              <div key={img.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                <div
-                  onClick={() => setSelectedIndex(allImages.findIndex((i) => i.id === img.id))}
-                  style={{
-                    width: '100%',
-                    height: '280px',
-                    borderRadius: '4px',
-                    overflow: 'hidden',
-                    backgroundColor: '#EFECE6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <img
-                    src={img.image_url}
-                    alt={img.title || ''}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-                <span style={{ marginTop: '0.75rem', fontSize: '1.05rem', fontFamily: 'sans-serif', color: '#1A1A1A', fontWeight: '500' }}>
-                  {img.title}
-                </span>
-              </div>
-            ))}
-          </div>
+          <ImageRow
+            heading={null}
+            items={generalImages}
+            imageHeight="280px"
+            onImageClick={openLightbox}
+          />
         </section>
       )}
 
-      {/* Lightbox: แสดงรูปเต็มเมื่อคลิก */}
+      {/* Lightbox: แสดงรูปเต็มเมื่อคลิก พร้อมปุ่มเลื่อนซ้าย-ขวา */}
       {selectedImage && (
         <div
           onClick={() => setSelectedIndex(null)}
@@ -158,10 +206,9 @@ export default function ImageGallery({ designerGroups, generalImages }) {
             &times;
           </button>
 
-          {/* ปุ่มเลื่อนไปรูปก่อนหน้า */}
           {allImages.length > 1 && (
             <button
-              onClick={(e) => { e.stopPropagation(); showPrev(); }}
+              onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
               aria-label="รูปก่อนหน้า"
               style={{
                 position: 'absolute',
@@ -186,10 +233,9 @@ export default function ImageGallery({ designerGroups, generalImages }) {
             </button>
           )}
 
-          {/* ปุ่มเลื่อนไปรูปถัดไป (ดูรูปที่ 4 เป็นต้นไปได้จากปุ่มนี้) */}
           {allImages.length > 1 && (
             <button
-              onClick={(e) => { e.stopPropagation(); showNext(); }}
+              onClick={(e) => { e.stopPropagation(); showNextImage(); }}
               aria-label="รูปถัดไป"
               style={{
                 position: 'absolute',
@@ -236,7 +282,6 @@ export default function ImageGallery({ designerGroups, generalImages }) {
             </span>
           )}
 
-          {/* ตัวนับลำดับรูป เช่น 4 / 9 */}
           <span style={{
             marginTop: '0.5rem',
             color: '#CCC',
