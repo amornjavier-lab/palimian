@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from 'react';
 
-// ปุ่มลูกศรเล็กๆ สำหรับเลื่อนกริดไปดูรูปถัดไป/ก่อนหน้า
+// เช็คว่า URL นี้เป็นไฟล์วิดีโอหรือไม่ จากนามสกุลไฟล์ท้าย URL
+function isVideoUrl(url) {
+  if (!url) return false;
+  return /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url);
+}
+
+// ปุ่มลูกศรเล็กๆ สำหรับเลื่อนกริดไปดูรูป/วิดีโอถัดไป/ก่อนหน้า
 function ArrowButton({ direction, onClick }) {
   return (
     <button
       onClick={onClick}
-      aria-label={direction === 'prev' ? 'รูปก่อนหน้า' : 'รูปถัดไป'}
+      aria-label={direction === 'prev' ? 'ก่อนหน้า' : 'ถัดไป'}
       style={{
         backgroundColor: '#1A1A1A',
         color: '#FFF',
@@ -28,8 +34,69 @@ function ArrowButton({ direction, onClick }) {
   );
 }
 
-// แถวรูปของนักกราฟิกคนหนึ่ง (หรือ gallery ทั่วไป) แสดงทีละ 3 รูป
-// ถ้ามีมากกว่า 3 รูป จะมีปุ่มลูกศรเลื่อนดูรูปที่ 4 เป็นต้นไป
+// ไอคอนสามเหลี่ยม Play ที่วางซ้อนอยู่บน thumbnail วิดีโอในกริด
+function PlayOverlay() {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none'
+    }}>
+      <div style={{
+        width: '3rem',
+        height: '3rem',
+        borderRadius: '50%',
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          width: 0,
+          height: 0,
+          borderTop: '0.6rem solid transparent',
+          borderBottom: '0.6rem solid transparent',
+          borderLeft: '0.9rem solid #FFF',
+          marginLeft: '0.2rem'
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// รูปหรือวิดีโอ 1 ชิ้นใน thumbnail ของกริด
+function MediaThumbnail({ item, fit }) {
+  if (isVideoUrl(item.image_url)) {
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <video
+          src={item.image_url}
+          muted
+          playsInline
+          preload="metadata"
+          style={{ width: '100%', height: '100%', objectFit: fit }}
+        />
+        <PlayOverlay />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={item.image_url}
+      alt={item.title || ''}
+      style={{ width: '100%', height: '100%', objectFit: fit }}
+    />
+  );
+}
+
+// แถวรูป/วิดีโอของนักกราฟิกคนหนึ่ง (หรือ gallery ทั่วไป) แสดงทีละ 3 ชิ้น
+// ถ้ามีมากกว่า 3 ชิ้น จะมีปุ่มลูกศรเลื่อนดูชิ้นที่ 4 เป็นต้นไป
 function ImageRow({ heading, items, imageHeight, onImageClick }) {
   const [startIndex, setStartIndex] = useState(0);
   const windowSize = 3;
@@ -88,11 +155,7 @@ function ImageRow({ heading, items, imageHeight, onImageClick }) {
                 cursor: 'pointer'
               }}
             >
-              <img
-                src={img.image_url}
-                alt={img.title || heading || ''}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              <MediaThumbnail item={img} fit="cover" />
             </div>
             <span style={{ marginTop: '0.6rem', fontSize: '0.95rem', fontFamily: 'sans-serif', color: '#1A1A1A' }}>
               {img.title}
@@ -107,8 +170,7 @@ function ImageRow({ heading, items, imageHeight, onImageClick }) {
 export default function ImageGallery({ designerGroups, generalImages }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  // รวมรูปทั้งหมด (ทั้งจากกลุ่มนักกราฟิกและ gallery ทั่วไป) เป็นลิสต์เดียว เรียงตามลำดับที่แสดงบนหน้าจอ
-  // ใช้สำหรับเลื่อนดูรูปต่อเนื่องใน lightbox (ครอบคลุมรูปที่ 4 เป็นต้นไปด้วย แม้จะไม่ได้อยู่ในกริดที่มองเห็น ณ ขณะนั้น)
+  // รวมรูป/วิดีโอทั้งหมด (ทั้งจากกลุ่มนักกราฟิกและ gallery ทั่วไป) เป็นลิสต์เดียว เรียงตามลำดับที่แสดงบนหน้าจอ
   const allImages = [
     ...designerGroups.flatMap((group) => group.items),
     ...generalImages
@@ -140,7 +202,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
 
   return (
     <>
-      {/* Designer Rows: 1 แถว = นักกราฟิก 1 คน แสดงทีละ 3 รูป เลื่อนดูรูปที่ 4 ขึ้นไปด้วยปุ่มลูกศร */}
+      {/* Designer Rows: 1 แถว = นักกราฟิก/นักตัดต่อ 1 คน แสดงทีละ 3 ชิ้น เลื่อนดูชิ้นที่ 4 ขึ้นไปด้วยปุ่มลูกศร */}
       {designerGroups.length > 0 && (
         <section style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           {designerGroups.map((group) => (
@@ -155,7 +217,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
         </section>
       )}
 
-      {/* Product Gallery Grid เดิม: สำหรับรูปที่ไม่มี designer_name แสดงทีละ 3 รูปเช่นกัน */}
+      {/* Product Gallery Grid เดิม: สำหรับรูป/วิดีโอที่ไม่มี designer_name แสดงทีละ 3 ชิ้นเช่นกัน */}
       {generalImages.length > 0 && (
         <section style={{ marginBottom: '4rem' }}>
           <ImageRow
@@ -167,7 +229,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
         </section>
       )}
 
-      {/* Lightbox: แสดงรูปเต็มเมื่อคลิก พร้อมปุ่มเลื่อนซ้าย-ขวา */}
+      {/* Lightbox: แสดงรูปเต็ม หรือเล่นวิดีโอเต็มเมื่อคลิก พร้อมปุ่มเลื่อนซ้าย-ขวา */}
       {selectedImage && (
         <div
           onClick={() => setSelectedIndex(null)}
@@ -209,7 +271,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
           {allImages.length > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
-              aria-label="รูปก่อนหน้า"
+              aria-label="ก่อนหน้า"
               style={{
                 position: 'absolute',
                 left: '1rem',
@@ -236,7 +298,7 @@ export default function ImageGallery({ designerGroups, generalImages }) {
           {allImages.length > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); showNextImage(); }}
-              aria-label="รูปถัดไป"
+              aria-label="ถัดไป"
               style={{
                 position: 'absolute',
                 right: '1rem',
@@ -260,17 +322,34 @@ export default function ImageGallery({ designerGroups, generalImages }) {
             </button>
           )}
 
-          <img
-            src={selectedImage.image_url}
-            alt={selectedImage.title || ''}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: '90vw',
-              maxHeight: '80vh',
-              objectFit: 'contain',
-              borderRadius: '4px'
-            }}
-          />
+          {isVideoUrl(selectedImage.image_url) ? (
+            <video
+              key={selectedImage.image_url}
+              src={selectedImage.image_url}
+              controls
+              autoPlay
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '80vh',
+                borderRadius: '4px',
+                backgroundColor: '#000'
+              }}
+            />
+          ) : (
+            <img
+              src={selectedImage.image_url}
+              alt={selectedImage.title || ''}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          )}
+
           {selectedImage.title && (
             <span style={{
               marginTop: '1rem',
